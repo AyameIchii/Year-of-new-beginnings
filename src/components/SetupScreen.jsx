@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
-import { MAX_ENVELOPES, STORAGE_KEY_SETUP } from "../constants";
+import { MAX_ENVELOPES } from "../constants";
 import { formatTime } from "../utils";
+import { getSetup, saveSetup } from "../supabase";
 
-/** Style dùng chung cho input */
 const inputStyle = {
   background: "rgba(255,255,255,0.07)",
   border: "1.5px solid rgba(255,214,10,0.35)",
@@ -16,11 +16,6 @@ const inputStyle = {
   transition: "border-color 0.2s",
 };
 
-/**
- * Màn hình nhập tên và cấu hình danh sách lì xì trước khi vào game.
- * Props:
- *   onStart {function} — callback(name: string, envelopes: string[])
- */
 export default function SetupScreen({ onStart }) {
   const [name, setName]               = useState("");
   const [envelopes, setEnvelopes]     = useState(
@@ -31,17 +26,15 @@ export default function SetupScreen({ onStart }) {
   const [existingSetup, setExistingSetup] = useState(null);
   const [loadingStorage, setLoadingStorage] = useState(true);
 
-  // Animation vào + load dữ liệu cũ
   useEffect(() => {
     setTimeout(() => setAnimIn(true), 50);
 
     (async () => {
       try {
-        const saved = await window.storage.get(STORAGE_KEY_SETUP, true);
-        if (saved) {
-          const setup = JSON.parse(saved.value);
+        const setup = await getSetup();
+        if (setup?.envelopes) {
           setExistingSetup(setup);
-          if (setup.envelopes?.length) setEnvelopes(setup.envelopes);
+          setEnvelopes(setup.envelopes);
         }
       } catch {}
       setLoadingStorage(false);
@@ -52,16 +45,11 @@ export default function SetupScreen({ onStart }) {
     if (!name.trim()) return;
     const filled = envelopes.map((e, i) => e.trim() || `Lì xì ${i + 1}`);
     try {
-      await window.storage.set(
-        STORAGE_KEY_SETUP,
-        JSON.stringify({ envelopes: filled, updatedAt: Date.now() }),
-        true
-      );
+      await saveSetup(filled);
     } catch {}
     onStart(name.trim(), filled);
   };
 
-  /** Paste nhanh danh sách (mỗi dòng / dấu phẩy / chấm phẩy = 1 lì xì) */
   const handleBulkPaste = (text) => {
     const lines = text
       .split(/[\n,;]+/)
@@ -94,7 +82,6 @@ export default function SetupScreen({ onStart }) {
         fontFamily: "'Be Vietnam Pro', sans-serif",
       }}
     >
-      {/* Hạt trang trí nổi */}
       <FloatingParticles />
 
       <div
@@ -106,7 +93,6 @@ export default function SetupScreen({ onStart }) {
           transition: "all 0.6s cubic-bezier(.34,1.56,.64,1)",
         }}
       >
-        {/* Tiêu đề */}
         <div className="text-center mb-8">
           <div style={{ fontSize: 64, lineHeight: 1, marginBottom: 12 }}>🧧</div>
           <h1
@@ -127,7 +113,6 @@ export default function SetupScreen({ onStart }) {
           </p>
         </div>
 
-        {/* Card chính */}
         <div
           style={{
             background: "rgba(255,255,255,0.04)",
@@ -144,7 +129,6 @@ export default function SetupScreen({ onStart }) {
             </div>
           ) : (
             <>
-              {/* Tabs */}
               <div className="flex mb-6 rounded-xl overflow-hidden" style={{ border: "1px solid rgba(255,214,10,0.2)" }}>
                 {["name", "envelopes"].map((tab) => (
                   <button
@@ -167,11 +151,10 @@ export default function SetupScreen({ onStart }) {
                 ))}
               </div>
 
-              {/* Tab: Tên */}
               {activeTab === "name" && (
                 <div style={{ animation: "fadeIn 0.3s ease" }}>
                   <label style={{ color: "#ffd60a", fontSize: 13, display: "block", marginBottom: 8, fontWeight: 600 }}>
-                    Nhập tên của bạn để tham gia bốc thăm:
+                    Nhập tên của bạn:
                   </label>
                   <input
                     style={inputStyle}
@@ -189,17 +172,16 @@ export default function SetupScreen({ onStart }) {
                       style={{ background: "rgba(255,214,10,0.07)", border: "1px solid rgba(255,214,10,0.2)" }}
                     >
                       <div style={{ color: "#ffd60a", fontSize: 12, marginBottom: 4 }}>
-                        ✅ Đã có danh sách lì xì từ lần trước ({existingSetup.envelopes.length} phong bì)
+                        ✅ Đã có danh sách từ Supabase ({existingSetup.envelopes.length} phong bì)
                       </div>
                       <div style={{ color: "rgba(255,255,255,0.5)", fontSize: 11 }}>
-                        Cập nhật lúc: {formatTime(existingSetup.updatedAt)}
+                        Cập nhật: {formatTime(new Date(existingSetup.updated_at).getTime())}
                       </div>
                     </div>
                   )}
                 </div>
               )}
 
-              {/* Tab: Danh sách lì xì */}
               {activeTab === "envelopes" && (
                 <div style={{ animation: "fadeIn 0.3s ease" }}>
                   <div className="flex items-center justify-between mb-3">
@@ -209,7 +191,7 @@ export default function SetupScreen({ onStart }) {
                     <div className="flex gap-2">
                       <button
                         onClick={() => {
-                          const text = prompt("Dán danh sách (mỗi dòng 1 tên, tối đa 99):");
+                          const text = prompt("Dán danh sách (mỗi dòng 1 tên):");
                           if (text) handleBulkPaste(text);
                         }}
                         style={{
@@ -220,7 +202,7 @@ export default function SetupScreen({ onStart }) {
                           fontFamily: "'Be Vietnam Pro', sans-serif",
                         }}
                       >
-                        📋 Dán nhanh
+                        📋 Dán
                       </button>
                       <button
                         onClick={handleReset}
@@ -264,7 +246,6 @@ export default function SetupScreen({ onStart }) {
                 </div>
               )}
 
-              {/* Nút vào chơi */}
               <button
                 onClick={handleStart}
                 disabled={!name.trim()}
@@ -302,7 +283,6 @@ export default function SetupScreen({ onStart }) {
   );
 }
 
-// ─── Hạt trang trí nổi ────────────────────────────────────────────────────────
 function FloatingParticles() {
   return (
     <div className="fixed inset-0 pointer-events-none overflow-hidden">

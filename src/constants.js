@@ -8,6 +8,7 @@ export const FIREWORK_COLORS = [
 export const STORAGE_KEY_ENVELOPES = "lixiapp:envelopes";
 export const STORAGE_KEY_HISTORY   = "lixiapp:history";
 export const STORAGE_KEY_SETUP     = "lixiapp:setup";
+export const STORAGE_KEY_BANKS     = "lixiapp:banks";  // { userName: bankAccount }
 
 // ─── Cấu hình Admin ──────────────────────────────────────────────────────────
 // Tên admin — đúng tên này khi đăng nhập sẽ có toàn quyền
