@@ -146,7 +146,7 @@ export default function BankAccountsPanel({ show, onClose }) {
                     flexShrink: 0,
                   }}
                 >
-                  📋 Copy
+                  📋 Copyy
                 </button>
               </div>
             ))
@@ -162,3 +162,4 @@ export default function BankAccountsPanel({ show, onClose }) {
     </div>
   );
 }
+// Bảng hiển thị số tài khoản đã nhập, chỉ admin mới thấy. Có chức năng tìm kiếm và copy nhanh.

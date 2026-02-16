@@ -3,8 +3,8 @@ import { createClient } from '@supabase/supabase-js';
 // ═══════════════════════════════════════════════════════════════════════════
 // ⚠️  QUAN TRỌNG: Thay 2 giá trị này bằng thông tin từ Supabase Dashboard
 // ═══════════════════════════════════════════════════════════════════════════
-const SUPABASE_URL = 'https://cztrgbotgmgoagprgkek.supabase.co';  // ← Thay đổi URL
-const SUPABASE_ANON_KEY = 'sb_publishable_sqWGBJ80Q5xGs6yJGkXYJw_Sz-bW42F';              // ← Thay đổi key
+const SUPABASE_URL = 'https://YOUR_PROJECT_ID.supabase.co';  // ← Thay đổi URL
+const SUPABASE_ANON_KEY = 'YOUR_ANON_KEY_HERE';              // ← Thay đổi key
 
 export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 

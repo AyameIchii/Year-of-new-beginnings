@@ -158,3 +158,4 @@ export default function EnvelopeCard({ env, index, onPick, alreadyPicked, isAdmi
     </div>
   );
 }
+// Mỗi phong bì là một nút với hiệu ứng hover và trạng thái picked. Admin sẽ thấy giá trị khi hover, người thường chỉ thấy khi đã bốc.

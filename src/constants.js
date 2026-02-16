@@ -10,6 +10,27 @@ export const STORAGE_KEY_HISTORY   = "lixiapp:history";
 export const STORAGE_KEY_SETUP     = "lixiapp:setup";
 export const STORAGE_KEY_BANKS     = "lixiapp:banks";  // { userName: bankAccount }
 
+// ─── Cơ chế bốc thêm ─────────────────────────────────────────────────────────
+// Các điều kiện để được bốc thêm lì xì
+export const BONUS_RULES = {
+  // Bốc trúng phong bì có giá trị cao nhất (id = 0) → bốc thêm 1 lần
+  jackpotBonus: true,
+  
+  // Từ khóa trong nội dung lì xì để kích hoạt bốc thêm
+  // VD: "Bốc thêm", "Thêm 1 lần", "Lucky bonus"
+  bonusKeywords: [
+    "bốc thêm",
+    "thêm 1 lần", 
+    "thêm một lần",
+    "lucky bonus",
+    "bonus",
+    "may mắn x2"
+  ],
+};
+
+// Số lần bốc thêm tối đa cho 1 người (tránh vòng lặp vô hạn)
+export const MAX_BONUS_PICKS = 3;
+
 // ─── Cấu hình Admin ──────────────────────────────────────────────────────────
 // Tên admin — đúng tên này khi đăng nhập sẽ có toàn quyền
 export const ADMIN_NAME = "_np.k";

@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
-import { ADMIN_NAME, ADMIN_PERMS } from "../constants";
-import { shuffle, formatTime } from "../utils";
+import { ADMIN_NAME, ADMIN_PERMS, BONUS_RULES, MAX_BONUS_PICKS } from "../constants";
+import { shuffle, formatTime, checkBonusPick, isJackpot } from "../utils";
 import { getEnvelopes, initEnvelopes, updateEnvelope, getHistory, addHistory, clearHistory, saveBank } from "../supabase";
 import Fireworks from "./Fireworks";
 import EnvelopeCard from "./EnvelopeCard";
@@ -17,10 +17,16 @@ export default function GameScreen({ userName, initialEnvelopes, onReset }) {
   const [showPreview, setShowPreview] = useState(false);
   const [showBanks, setShowBanks]     = useState(false);
   const [filterText, setFilterText]   = useState("");
+  const [bonusCount, setBonusCount]   = useState(0); // Đếm số lần bốc thêm trong session
 
   const isAdmin = userName === ADMIN_NAME;
   const myPicks = history.filter((h) => h.pickedBy === userName);
-  const alreadyPicked = isAdmin && ADMIN_PERMS.unlimitedPicks ? false : myPicks.length > 0;
+  
+  // Người thường: chỉ bốc 1 lần TRỪ KHI có bonus
+  // Admin: không giới hạn nếu có quyền
+  const alreadyPicked = isAdmin && ADMIN_PERMS.unlimitedPicks
+    ? false
+    : myPicks.length > 0 && bonusCount === 0;
 
   // ── Load từ Supabase ──────────────────────────────────────────────────────
   useEffect(() => {
@@ -32,7 +38,6 @@ export default function GameScreen({ userName, initialEnvelopes, onReset }) {
     try {
       let envData = await getEnvelopes();
       
-      // Nếu DB trống (lần đầu), khởi tạo
       if (envData.length === 0) {
         const fresh = initialEnvelopes.map((val, i) => ({
           id: i, value: val, pickedBy: null, pickedAt: null,
@@ -87,6 +92,20 @@ export default function GameScreen({ userName, initialEnvelopes, onReset }) {
 
     const now = Date.now();
     
+    // Kiểm tra bonus
+    const hasJackpotBonus = BONUS_RULES.jackpotBonus && isJackpot(targetEnv.id);
+    const hasKeywordBonus = checkBonusPick(targetEnv, BONUS_RULES.bonusKeywords);
+    const hasBonus = (hasJackpotBonus || hasKeywordBonus) && bonusCount < MAX_BONUS_PICKS;
+    
+    let bonusReason = "";
+    if (hasBonus) {
+      if (hasJackpotBonus) {
+        bonusReason = "🏆 Bạn trúng Jackpot - mệnh giá cao nhất!";
+      } else if (hasKeywordBonus) {
+        bonusReason = "✨ Phong bì có nội dung đặc biệt!";
+      }
+    }
+    
     // Update DB
     await updateEnvelope(targetEnv.id, userName, now);
     
@@ -98,6 +117,8 @@ export default function GameScreen({ userName, initialEnvelopes, onReset }) {
       value: targetEnv.value,
       pickedAt: now,
       isAdmin,
+      hasBonus,
+      bonusReason,
     };
     
     await addHistory(histEntry);
@@ -108,6 +129,14 @@ export default function GameScreen({ userName, initialEnvelopes, onReset }) {
     );
     setHistory((prev) => [histEntry, ...prev]);
     setResult(histEntry);
+    
+    // Nếu có bonus → cho phép bốc thêm
+    if (hasBonus) {
+      setBonusCount((prev) => prev + 1);
+    } else {
+      setBonusCount(0); // Reset khi không có bonus
+    }
+    
     setFireworks(true);
     setTimeout(() => setFireworks(false), 4000);
   };
@@ -126,11 +155,21 @@ export default function GameScreen({ userName, initialEnvelopes, onReset }) {
     
     setEnvelopes(fresh);
     setHistory([]);
+    setBonusCount(0);
   };
 
   // ── Lưu bank ─────────────────────────────────────────────────────────────
   const handleSaveBank = async (bankAccount) => {
     await saveBank(userName, bankAccount);
+  };
+
+  // ── Đóng modal (reset bonus count nếu đã hết lượt) ───────────────────────
+  const handleCloseResult = () => {
+    setResult(null);
+    // Nếu không còn bonus → reset count
+    if (!result?.hasBonus || bonusCount >= MAX_BONUS_PICKS) {
+      setBonusCount(0);
+    }
   };
 
   // ── Derived ───────────────────────────────────────────────────────────────
@@ -156,7 +195,7 @@ export default function GameScreen({ userName, initialEnvelopes, onReset }) {
       }}
     >
       <Fireworks active={fireworks} />
-      <ResultModal result={result} onClose={() => setResult(null)} onSaveBank={handleSaveBank} />
+      <ResultModal result={result} onClose={handleCloseResult} onSaveBank={handleSaveBank} />
       <BankAccountsPanel show={showBanks} onClose={() => setShowBanks(false)} />
 
       {/* ── Header ── */}
@@ -194,9 +233,12 @@ export default function GameScreen({ userName, initialEnvelopes, onReset }) {
                     ♛ ADMIN
                   </span>
                 )}
-                {!isAdmin && lastPick && <span style={{ color: "#4ade80" }}> ✓ Đã bốc</span>}
+                {!isAdmin && lastPick && bonusCount === 0 && <span style={{ color: "#4ade80" }}> ✓ Đã bốc</span>}
+                {bonusCount > 0 && (
+                  <span style={{ color: "#ec4899", fontWeight: 600 }}> 🎰 Bonus x{bonusCount}</span>
+                )}
                 {isAdmin && myPicks.length > 0 && (
-                  <span style={{ color: "#a78bfa" }}> · {myPicks.length} lần bốc</span>
+                  <span style={{ color: "#a78bfa" }}> · {myPicks.length} lần</span>
                 )}
               </div>
             </div>
@@ -243,6 +285,23 @@ export default function GameScreen({ userName, initialEnvelopes, onReset }) {
             {ADMIN_PERMS.canReset       && <AdminPill>🔄 Reset</AdminPill>}
           </div>
         )}
+
+        {/* Bonus rules info */}
+        {!isAdmin && (
+          <div
+            className="max-w-5xl mx-auto mt-2 px-3 py-1.5 rounded-xl"
+            style={{ background: "rgba(236,72,153,0.08)", border: "1px solid rgba(236,72,153,0.2)" }}
+          >
+            <div style={{ color: "#ec4899", fontSize: 11, fontWeight: 600, marginBottom: 2 }}>
+              🎰 Cơ hội bốc thêm:
+            </div>
+            <div style={{ color: "rgba(236,72,153,0.7)", fontSize: 10, lineHeight: 1.4 }}>
+              {BONUS_RULES.jackpotBonus && "🏆 Trúng Jackpot (cao nhất)"}
+              {BONUS_RULES.jackpotBonus && BONUS_RULES.bonusKeywords.length > 0 && " • "}
+              {BONUS_RULES.bonusKeywords.length > 0 && `✨ Nội dung: ${BONUS_RULES.bonusKeywords.slice(0, 3).join(", ")}`}
+            </div>
+          </div>
+        )}
       </header>
 
       {/* ── Body ── */}
@@ -251,20 +310,23 @@ export default function GameScreen({ userName, initialEnvelopes, onReset }) {
           <div
             className="mb-6 p-4 rounded-2xl flex items-center gap-4"
             style={{
-              background: isAdmin
+              background: lastPick.hasBonus
+                ? "linear-gradient(135deg, rgba(236,72,153,0.15), rgba(236,72,153,0.05))"
+                : isAdmin
                 ? "linear-gradient(135deg, rgba(167,139,250,0.1), rgba(167,139,250,0.05))"
                 : "linear-gradient(135deg, rgba(74,222,128,0.1), rgba(74,222,128,0.05))",
-              border: `1.5px solid ${isAdmin ? "rgba(167,139,250,0.3)" : "rgba(74,222,128,0.3)"}`,
+              border: `1.5px solid ${lastPick.hasBonus ? "rgba(236,72,153,0.4)" : isAdmin ? "rgba(167,139,250,0.3)" : "rgba(74,222,128,0.3)"}`,
             }}
           >
-            <div style={{ fontSize: 36 }}>{isAdmin ? "👑" : "🎊"}</div>
+            <div style={{ fontSize: 36 }}>{lastPick.hasBonus ? "🎰" : isAdmin ? "👑" : "🎊"}</div>
             <div>
-              <div style={{ color: isAdmin ? "#a78bfa" : "#4ade80", fontWeight: 700, fontSize: 15, marginBottom: 2 }}>
-                {isAdmin ? "Admin đã bốc:" : "Bạn đã bốc được:"}{" "}
+              <div style={{ color: lastPick.hasBonus ? "#ec4899" : isAdmin ? "#a78bfa" : "#4ade80", fontWeight: 700, fontSize: 15, marginBottom: 2 }}>
+                {isAdmin ? "Admin đã bốc:" : "Bạn đã bốc:"}{" "}
                 <span style={{ color: "#ffd60a" }}>{lastPick.value}</span>
               </div>
               <div style={{ color: "rgba(255,255,255,0.5)", fontSize: 12 }}>
                 Lì xì #{lastPick.envelopeNumber} • {formatTime(lastPick.pickedAt)}
+                {lastPick.hasBonus && <span style={{ color: "#ec4899", fontWeight: 600 }}> • {lastPick.bonusReason}</span>}
                 {isAdmin && ADMIN_PERMS.unlimitedPicks && (
                   <span style={{ color: "#a78bfa" }}> • Tổng: {myPicks.length} lần</span>
                 )}
@@ -298,24 +360,27 @@ export default function GameScreen({ userName, initialEnvelopes, onReset }) {
               👁 Xem trước (chỉ admin)
             </div>
             <div className="custom-scroll" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))", gap: 6, maxHeight: 280, overflowY: "auto" }}>
-              {[...envelopes].sort((a, b) => a.id - b.id).map((env) => (
-                <div key={env.id} className="flex items-center gap-2 px-3 py-2 rounded-lg"
-                  style={{
-                    background: env.pickedBy ? "rgba(255,255,255,0.03)" : env.id === 0 ? "rgba(255,214,10,0.12)" : "rgba(255,255,255,0.05)",
-                    border: `1px solid ${env.pickedBy ? "rgba(255,255,255,0.05)" : env.id === 0 ? "rgba(255,214,10,0.3)" : "rgba(167,139,250,0.15)"}`,
-                    opacity: env.pickedBy ? 0.45 : 1,
-                  }}
-                >
-                  <span style={{ color: "rgba(255,214,10,0.4)", fontSize: 10, minWidth: 20, fontFamily: "monospace" }}>#{env.id + 1}</span>
-                  <span style={{ color: env.id === 0 ? "#ffd60a" : "#e2d9f3", fontSize: 12, fontWeight: env.id === 0 ? 700 : 400, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                    {env.id === 0 && "🏆 "}{env.value}
-                  </span>
-                  {env.pickedBy && <span style={{ fontSize: 9, color: "#888", marginLeft: "auto" }}>✓</span>}
-                </div>
-              ))}
+              {[...envelopes].sort((a, b) => a.id - b.id).map((env) => {
+                const hasBonus = isJackpot(env.id) || checkBonusPick(env, BONUS_RULES.bonusKeywords);
+                return (
+                  <div key={env.id} className="flex items-center gap-2 px-3 py-2 rounded-lg"
+                    style={{
+                      background: env.pickedBy ? "rgba(255,255,255,0.03)" : hasBonus ? "rgba(236,72,153,0.12)" : env.id === 0 ? "rgba(255,214,10,0.12)" : "rgba(255,255,255,0.05)",
+                      border: `1px solid ${env.pickedBy ? "rgba(255,255,255,0.05)" : hasBonus ? "rgba(236,72,153,0.3)" : env.id === 0 ? "rgba(255,214,10,0.3)" : "rgba(167,139,250,0.15)"}`,
+                      opacity: env.pickedBy ? 0.45 : 1,
+                    }}
+                  >
+                    <span style={{ color: "rgba(255,214,10,0.4)", fontSize: 10, minWidth: 20, fontFamily: "monospace" }}>#{env.id + 1}</span>
+                    <span style={{ color: hasBonus ? "#ec4899" : env.id === 0 ? "#ffd60a" : "#e2d9f3", fontSize: 12, fontWeight: hasBonus || env.id === 0 ? 700 : 400, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {hasBonus && "🎰 "}{env.id === 0 && "🏆 "}{env.value}
+                    </span>
+                    {env.pickedBy && <span style={{ fontSize: 9, color: "#888", marginLeft: "auto" }}>✓</span>}
+                  </div>
+                );
+              })}
             </div>
             <p style={{ color: "rgba(167,139,250,0.5)", fontSize: 10, marginTop: 8 }}>
-              🏆 #1 = cao nhất
+              🏆 #1 = cao nhất • 🎰 = bonus
             </p>
           </div>
         )}
@@ -328,6 +393,15 @@ export default function GameScreen({ userName, initialEnvelopes, onReset }) {
                   style={{ background: "rgba(255,214,10,0.1)", border: "1px solid rgba(255,214,10,0.3)", color: "#ffd60a", fontSize: 14, fontFamily: "serif", animation: "glow 2s ease-in-out infinite" }}
                 >
                   🎯 Chọn một phong bì!
+                </div>
+              </div>
+            )}
+            {bonusCount > 0 && (
+              <div className="text-center mb-6">
+                <div className="inline-block px-6 py-3 rounded-full"
+                  style={{ background: "rgba(236,72,153,0.15)", border: "1px solid rgba(236,72,153,0.4)", color: "#ec4899", fontSize: 14, animation: "pulse 1.5s ease-in-out infinite" }}
+                >
+                  🎰 Bốc thêm lần {bonusCount}/{MAX_BONUS_PICKS}!
                 </div>
               </div>
             )}
@@ -375,6 +449,7 @@ export default function GameScreen({ userName, initialEnvelopes, onReset }) {
 
       <style>{`
         @keyframes glow { 0%,100% { box-shadow: 0 0 10px rgba(255,214,10,0.2); } 50% { box-shadow: 0 0 20px rgba(255,214,10,0.5); } }
+        @keyframes pulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.05); } }
         .custom-scroll::-webkit-scrollbar { width: 4px; }
         .custom-scroll::-webkit-scrollbar-track { background: rgba(255,255,255,0.05); border-radius: 4px; }
         .custom-scroll::-webkit-scrollbar-thumb { background: rgba(167,139,250,0.3); border-radius: 4px; }
@@ -432,7 +507,7 @@ function HistoryPanel({ history, filterText, setFilterText, totalCount, userName
         <span className="px-2 py-1 rounded-full text-xs" style={{ background: "rgba(230,57,70,0.2)", color: "#e63946" }}>{totalCount} lượt</span>
       </div>
       <input style={{ background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,214,10,0.2)", borderRadius: 8, color: "#fff", padding: "8px 12px", fontSize: 12, marginBottom: 12, outline: "none", fontFamily: "'Be Vietnam Pro', sans-serif", width: "100%" }}
-        placeholder="🔍 Tìm kiếm..." value={filterText} onChange={(e) => setFilterText(e.target.value)} />
+        placeholder="🔍 Tìm..." value={filterText} onChange={(e) => setFilterText(e.target.value)} />
       <div style={{ overflowY: "auto", flex: 1 }}>
         {history.length === 0 ? (
           <div className="text-center py-8" style={{ color: "rgba(255,255,255,0.3)", fontSize: 13 }}>Chưa có ai bốc</div>
@@ -442,16 +517,17 @@ function HistoryPanel({ history, filterText, setFilterText, totalCount, userName
             const isAdminLine = h.isAdmin;
             return (
               <div key={h.id} className="mb-2 p-3 rounded-xl"
-                style={{ background: isAdminLine ? "rgba(167,139,250,0.07)" : isMe ? "rgba(74,222,128,0.08)" : "rgba(255,255,255,0.04)", border: `1px solid ${isAdminLine ? "rgba(167,139,250,0.2)" : isMe ? "rgba(74,222,128,0.2)" : "rgba(255,255,255,0.06)"}` }}
+                style={{ background: h.hasBonus ? "rgba(236,72,153,0.08)" : isAdminLine ? "rgba(167,139,250,0.07)" : isMe ? "rgba(74,222,128,0.08)" : "rgba(255,255,255,0.04)", border: `1px solid ${h.hasBonus ? "rgba(236,72,153,0.2)" : isAdminLine ? "rgba(167,139,250,0.2)" : isMe ? "rgba(74,222,128,0.2)" : "rgba(255,255,255,0.06)"}` }}
               >
                 <div className="flex items-center justify-between gap-2">
                   <div className="flex items-center gap-2">
-                    <span style={{ fontSize: 16 }}>{isAdminLine ? "👑" : "🧧"}</span>
+                    <span style={{ fontSize: 16 }}>{h.hasBonus ? "🎰" : isAdminLine ? "👑" : "🧧"}</span>
                     <div>
-                      <div style={{ color: isAdminLine ? "#a78bfa" : isMe ? "#4ade80" : "#fff", fontSize: 12, fontWeight: 600, lineHeight: 1.3 }}>
+                      <div style={{ color: h.hasBonus ? "#ec4899" : isAdminLine ? "#a78bfa" : isMe ? "#4ade80" : "#fff", fontSize: 12, fontWeight: 600, lineHeight: 1.3 }}>
                         {h.pickedBy}
                         {isAdminLine && <span style={{ color: "#a78bfa", fontSize: 9 }}> ♛</span>}
                         {isMe && !isAdminLine && <span style={{ color: "#4ade80", fontSize: 10 }}> (bạn)</span>}
+                        {h.hasBonus && <span style={{ color: "#ec4899", fontSize: 9 }}> 🎰</span>}
                       </div>
                       <div style={{ color: "#ffd60a", fontSize: 11, opacity: 0.9 }}>{h.value}</div>
                     </div>
@@ -468,3 +544,4 @@ function HistoryPanel({ history, filterText, setFilterText, totalCount, userName
     </div>
   );
 }
+// Bảng lịch sử bốc thăm, có chức năng tìm kiếm theo tên người bốc hoặc giá trị phong bì. Admin sẽ thấy tất cả, người thường chỉ thấy lịch sử của mình.

@@ -11,7 +11,6 @@ export default function App() {
   const [screen, setScreen]       = useState("setup");
   const [userName, setUserName]   = useState("");
   const [envelopes, setEnvelopes] = useState([]);
-
   const handleStart = (name, envList) => {
     setUserName(name);
     setEnvelopes(envList);

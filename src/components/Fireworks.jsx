@@ -87,3 +87,4 @@ export default function Fireworks({ active }) {
     />
   );
 }
+// Hiệu ứng pháo hoa toàn màn hình, dùng canvas để vẽ các hạt pháo hoa nổ tung. Mỗi lần active thay đổi sẽ tạo ra một loạt đợt nổ mới. Các hạt sẽ bay ra từ tâm nổ, chịu tác động của trọng lực và dần mờ đi cho đến khi biến mất hoàn toàn.

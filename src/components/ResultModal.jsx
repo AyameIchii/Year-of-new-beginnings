@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 /**
  * Modal hiển thị kết quả sau khi bốc thăm thành công.
  * Props:
- *   result      {object|null} — { pickedBy, value, envelopeNumber, ... } hoặc null để ẩn
+ *   result      {object|null} — { pickedBy, value, envelopeNumber, hasBonus, bonusReason, ... }
  *   onClose     {function}    — callback đóng modal
  *   onSaveBank  {function}    — callback(bankAccount) khi lưu số tài khoản
  */
@@ -15,7 +15,7 @@ export default function ResultModal({ result, onClose, onSaveBank }) {
   useEffect(() => {
     if (result) {
       setTimeout(() => setShow(true), 50);
-      setBankAccount(""); // reset
+      setBankAccount("");
       setSaved(false);
     } else {
       setShow(false);
@@ -38,9 +38,13 @@ export default function ResultModal({ result, onClose, onSaveBank }) {
       <div
         className="relative text-center rounded-2xl p-8 w-full"
         style={{
-          background: "linear-gradient(135deg, #1a0a0a 0%, #3d0000 50%, #1a0a0a 100%)",
-          border: "3px solid #ffd60a",
-          boxShadow: "0 0 60px rgba(255,214,10,0.4), 0 0 120px rgba(230,57,70,0.3)",
+          background: result.hasBonus
+            ? "linear-gradient(135deg, #1a0a1a 0%, #4d0040 50%, #1a0a1a 100%)"
+            : "linear-gradient(135deg, #1a0a0a 0%, #3d0000 50%, #1a0a0a 100%)",
+          border: result.hasBonus ? "3px solid #ec4899" : "3px solid #ffd60a",
+          boxShadow: result.hasBonus
+            ? "0 0 60px rgba(236,72,153,0.5), 0 0 120px rgba(236,72,153,0.3)"
+            : "0 0 60px rgba(255,214,10,0.4), 0 0 120px rgba(230,57,70,0.3)",
           maxWidth: 440,
           transform: show ? "scale(1)" : "scale(0.5)",
           opacity: show ? 1 : 0,
@@ -49,12 +53,12 @@ export default function ResultModal({ result, onClose, onSaveBank }) {
       >
         {/* Icon quay */}
         <div className="text-5xl mb-2" style={{ animation: "spin 2s linear infinite" }}>
-          🎊
+          {result.hasBonus ? "🎰" : "🎊"}
         </div>
 
         <div
           style={{
-            color: "#ffd60a",
+            color: result.hasBonus ? "#ec4899" : "#ffd60a",
             fontFamily: "serif",
             fontSize: "13px",
             letterSpacing: 4,
@@ -62,14 +66,14 @@ export default function ResultModal({ result, onClose, onSaveBank }) {
             marginBottom: 8,
           }}
         >
-          Chúc Mừng!
+          {result.hasBonus ? "🎉 May Mắn Nhân Đôi!" : "Chúc Mừng!"}
         </div>
 
         {/* Tên người bốc */}
         <div style={{ color: "#fff", fontFamily: "serif", fontSize: "20px", fontWeight: "bold", marginBottom: 4 }}>
           {result.pickedBy}
         </div>
-        <div style={{ color: "#ffd60a", fontFamily: "serif", fontSize: "13px", marginBottom: 16, opacity: 0.8 }}>
+        <div style={{ color: result.hasBonus ? "#ec4899" : "#ffd60a", fontFamily: "serif", fontSize: "13px", marginBottom: 16, opacity: 0.8 }}>
           đã bốc được lì xì
         </div>
 
@@ -78,21 +82,45 @@ export default function ResultModal({ result, onClose, onSaveBank }) {
           className="mx-auto flex items-center justify-center rounded-xl mb-4"
           style={{
             width: 120, height: 80,
-            background: "linear-gradient(135deg, #e63946, #9d0208)",
-            border: "3px solid #ffd60a",
-            boxShadow: "0 0 30px rgba(255,214,10,0.6)",
+            background: result.hasBonus
+              ? "linear-gradient(135deg, #ec4899, #a855f7)"
+              : "linear-gradient(135deg, #e63946, #9d0208)",
+            border: `3px solid ${result.hasBonus ? "#ec4899" : "#ffd60a"}`,
+            boxShadow: result.hasBonus
+              ? "0 0 30px rgba(236,72,153,0.6)"
+              : "0 0 30px rgba(255,214,10,0.6)",
           }}
         >
-          <div style={{ fontSize: "40px" }}>🧧</div>
+          <div style={{ fontSize: "40px" }}>{result.hasBonus ? "💎" : "🧧"}</div>
         </div>
 
         {/* Giá trị lì xì */}
         <div style={{ color: "#ff9f1c", fontFamily: "serif", fontSize: "18px", fontWeight: "bold", marginBottom: 4 }}>
           {result.value}
         </div>
-        <div style={{ color: "#aaa", fontSize: "11px", marginBottom: 20 }}>
+        <div style={{ color: "#aaa", fontSize: "11px", marginBottom: result.hasBonus ? 16 : 20 }}>
           Lì xì #{result.envelopeNumber}
         </div>
+
+        {/* Thông báo bốc thêm */}
+        {result.hasBonus && (
+          <div
+            className="mb-5 p-4 rounded-xl"
+            style={{
+              background: "rgba(236,72,153,0.15)",
+              border: "1.5px solid rgba(236,72,153,0.4)",
+              boxShadow: "0 0 20px rgba(236,72,153,0.2)",
+            }}
+          >
+            <div className="text-3xl mb-2">🎁✨</div>
+            <div style={{ color: "#ec4899", fontWeight: 700, fontSize: 16, marginBottom: 4 }}>
+              ĐẶC BIỆT: BỐC THÊM 1 LẦN!
+            </div>
+            <div style={{ color: "rgba(236,72,153,0.8)", fontSize: 12 }}>
+              {result.bonusReason || "Bạn được quyền chọn thêm 1 phong bì nữa!"}
+            </div>
+          </div>
+        )}
 
         {/* ─── Ô nhập số tài khoản ─── */}
         <div
@@ -112,7 +140,7 @@ export default function ResultModal({ result, onClose, onSaveBank }) {
               textAlign: "left",
             }}
           >
-            💳 Nhập số tài khoản để nhận thưởng:
+            💳 Nhập số tài khoản:
           </label>
           <input
             type="text"
@@ -136,7 +164,6 @@ export default function ResultModal({ result, onClose, onSaveBank }) {
             onBlur={(e) => !saved && (e.target.style.borderColor = "rgba(255,214,10,0.3)")}
           />
 
-          {/* Nút lưu */}
           {!saved ? (
             <button
               onClick={handleSave}
@@ -164,7 +191,7 @@ export default function ResultModal({ result, onClose, onSaveBank }) {
                 fontFamily: "'Be Vietnam Pro', sans-serif",
               }}
             >
-              ✓ Đã lưu thành công!
+              ✓ Đã lưu!
             </div>
           )}
         </div>
@@ -174,16 +201,20 @@ export default function ResultModal({ result, onClose, onSaveBank }) {
           onClick={onClose}
           className="w-full px-8 py-3 rounded-full font-bold text-sm transition-all duration-200"
           style={{
-            background: "linear-gradient(135deg, #ffd60a, #fb8500)",
+            background: result.hasBonus
+              ? "linear-gradient(135deg, #ec4899, #a855f7)"
+              : "linear-gradient(135deg, #ffd60a, #fb8500)",
             color: "#1a0a0a",
             border: "none",
             fontFamily: "'Be Vietnam Pro', sans-serif",
             letterSpacing: 1,
             cursor: "pointer",
-            boxShadow: "0 4px 20px rgba(255,214,10,0.5)",
+            boxShadow: result.hasBonus
+              ? "0 4px 20px rgba(236,72,153,0.5)"
+              : "0 4px 20px rgba(255,214,10,0.5)",
           }}
         >
-          Tuyệt vời! 🎉
+          {result.hasBonus ? "🎰 Tiếp tục bốc thêm!" : "Tuyệt vời! 🎉"}
         </button>
 
         <style>{`
@@ -196,3 +227,4 @@ export default function ResultModal({ result, onClose, onSaveBank }) {
     </div>
   );
 }
+// Modal hiển thị kết quả sau khi bốc thăm thành công. Hiển thị tên người bốc, giá trị phong bì, có hiệu ứng đặc biệt nếu trúng thưởng nhân đôi. Có ô nhập số tài khoản để người dùng lưu thông tin nhận thưởng, chỉ hiện khi có kết quả và chưa lưu. Admin sẽ thấy lý do được bốc thêm nếu có.
