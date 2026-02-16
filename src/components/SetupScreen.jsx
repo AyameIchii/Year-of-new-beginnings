@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { MAX_ENVELOPES } from "../constants";
+import { MAX_ENVELOPES, ADMIN_NAME } from "../constants";
 import { formatTime } from "../utils";
 import { getSetup, saveSetup } from "../supabase";
 
@@ -25,6 +25,9 @@ export default function SetupScreen({ onStart }) {
   const [animIn, setAnimIn]           = useState(false);
   const [existingSetup, setExistingSetup] = useState(null);
   const [loadingStorage, setLoadingStorage] = useState(true);
+
+  // Kiểm tra xem có phải admin không (dựa trên tên đã nhập)
+  const isAdmin = name === ADMIN_NAME;
 
   useEffect(() => {
     setTimeout(() => setAnimIn(true), 50);
@@ -129,27 +132,37 @@ export default function SetupScreen({ onStart }) {
             </div>
           ) : (
             <>
-              <div className="flex mb-6 rounded-xl overflow-hidden" style={{ border: "1px solid rgba(255,214,10,0.2)" }}>
-                {["name", "envelopes"].map((tab) => (
-                  <button
-                    key={tab}
-                    onClick={() => setActiveTab(tab)}
-                    style={{
-                      flex: 1, padding: "10px 0", cursor: "pointer",
-                      background: activeTab === tab
-                        ? "linear-gradient(135deg, #e63946, #9d0208)"
-                        : "transparent",
-                      color: activeTab === tab ? "#ffd60a" : "rgba(255,255,255,0.5)",
-                      border: "none",
-                      fontFamily: "'Be Vietnam Pro', sans-serif",
-                      fontWeight: 600, fontSize: 13,
-                      transition: "all 0.2s",
-                    }}
-                  >
-                    {tab === "name" ? "👤 Tên của bạn" : "🎁 Danh sách lì xì"}
-                  </button>
-                ))}
-              </div>
+              {/* Tabs - Chỉ hiện tab "Danh sách lì xì" cho admin */}
+              {isAdmin ? (
+                <div className="flex mb-6 rounded-xl overflow-hidden" style={{ border: "1px solid rgba(255,214,10,0.2)" }}>
+                  {["name", "envelopes"].map((tab) => (
+                    <button
+                      key={tab}
+                      onClick={() => setActiveTab(tab)}
+                      style={{
+                        flex: 1, padding: "10px 0", cursor: "pointer",
+                        background: activeTab === tab
+                          ? "linear-gradient(135deg, #e63946, #9d0208)"
+                          : "transparent",
+                        color: activeTab === tab ? "#ffd60a" : "rgba(255,255,255,0.5)",
+                        border: "none",
+                        fontFamily: "'Be Vietnam Pro', sans-serif",
+                        fontWeight: 600, fontSize: 13,
+                        transition: "all 0.2s",
+                      }}
+                    >
+                      {tab === "name" ? "👤 Tên của bạn" : "🎁 Danh sách lì xì"}
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                // Người thường chỉ thấy tiêu đề "Tên của bạn"
+                <div className="mb-6">
+                  <h3 style={{ color: "#ffd60a", fontSize: 15, fontWeight: 700, textAlign: "center", fontFamily: "serif" }}>
+                    👤 Nhập Tên Của Bạn
+                  </h3>
+                </div>
+              )}
 
               {activeTab === "name" && (
                 <div style={{ animation: "fadeIn 0.3s ease" }}>
@@ -182,7 +195,8 @@ export default function SetupScreen({ onStart }) {
                 </div>
               )}
 
-              {activeTab === "envelopes" && (
+              {/* Tab "Danh sách lì xì" - CHỈ admin mới thấy */}
+              {activeTab === "envelopes" && isAdmin && (
                 <div style={{ animation: "fadeIn 0.3s ease" }}>
                   <div className="flex items-center justify-between mb-3">
                     <label style={{ color: "#ffd60a", fontSize: 13, fontWeight: 600 }}>
@@ -309,4 +323,5 @@ function FloatingParticles() {
     </div>
   );
 }
-// Hiệu ứng các hạt nhỏ bay lơ lửng trên
+// Lưu ý: Component này chỉ dành cho admin để thiết lập tên và danh sách lì xì. Người dùng bình thường sẽ chỉ thấy phần nhập tên.
+
