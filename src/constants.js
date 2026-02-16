@@ -1,4 +1,4 @@
-export const MAX_ENVELOPES = 99;
+export const MAX_ENVELOPES = 50;
 
 export const FIREWORK_COLORS = [
   "#FFD700", "#FF4500", "#FF69B4",
@@ -46,3 +46,21 @@ export const ADMIN_PERMS = {
   alwaysBest:     true,
   previewValues:  true,
 };
+
+// ─── Danh sách người may mắn (ẩn, luôn nhận mệnh giá cao nhất) ─────────────
+// Những người có tên trong danh sách này sẽ LUÔN nhận phong bì cao nhất
+// khi bốc thăm, nhưng KHÔNG hiện badge đặc biệt (để ẩn, tránh người khác biết)
+// 
+// Cách dùng: Thêm CHÍNH XÁC tên người chơi vào đây
+// VD: Nếu muốn "Nguyễn Văn A" luôn may mắn → thêm "Nguyễn Văn A"
+export const LUCKY_NAMES = [ "Ánh","Phan Ánh", "Phan Thị Ngọc Ánh", "Ngọc Ánh", "ánh","phan ánh", "phan thị ngọc ánh", "ngọc ánh"
+                            
+  // "A",              // ← Bỏ comment và thêm tên
+  // "Nguyễn Văn A",
+  // "Khách VIP",
+];
+
+// ⚠️ LƯU Ý: 
+// - Tên phải khớp CHÍNH XÁC (phân biệt chữ hoa/thường)
+// - Người trong danh sách này sẽ KHÔNG biết họ được ưu tiên
+// - Chỉ admin mới biết danh sách này tồn tại

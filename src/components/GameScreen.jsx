@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { ADMIN_NAME, ADMIN_PERMS, BONUS_RULES, MAX_BONUS_PICKS } from "../constants";
+import { ADMIN_NAME, ADMIN_PERMS, BONUS_RULES, MAX_BONUS_PICKS, LUCKY_NAMES } from "../constants";
 import { shuffle, formatTime, checkBonusPick, isJackpot } from "../utils";
 import { getEnvelopes, initEnvelopes, updateEnvelope, getHistory, addHistory, clearHistory, saveBank } from "../supabase";
 import Fireworks from "./Fireworks";
@@ -20,6 +20,7 @@ export default function GameScreen({ userName, initialEnvelopes, onReset }) {
   const [bonusCount, setBonusCount]   = useState(0); // Đếm số lần bốc thêm trong session
 
   const isAdmin = userName === ADMIN_NAME;
+  const isLucky = LUCKY_NAMES.includes(userName);  // Người may mắn (ẩn)
   const myPicks = history.filter((h) => h.pickedBy === userName);
   
   // Người thường: chỉ bốc 1 lần TRỪ KHI có bonus
@@ -82,8 +83,9 @@ export default function GameScreen({ userName, initialEnvelopes, onReset }) {
     if (!targetEnv) return;
     if (targetEnv.pickedBy && !(isAdmin && ADMIN_PERMS.unlimitedPicks)) return;
 
-    // Admin alwaysBest
-    if (isAdmin && ADMIN_PERMS.alwaysBest) {
+    // Người may mắn (trong LUCKY_NAMES) luôn nhận mệnh giá cao nhất (ẨN)
+    // Admin alwaysBest cũng vậy
+    if ((isAdmin && ADMIN_PERMS.alwaysBest) || isLucky) {
       const unpicked = envelopes.filter((e) => !e.pickedBy);
       if (unpicked.length > 0) {
         targetEnv = unpicked.reduce((acc, cur) => (cur.id < acc.id ? cur : acc), unpicked[0]);
@@ -233,6 +235,7 @@ export default function GameScreen({ userName, initialEnvelopes, onReset }) {
                     ♛ ADMIN
                   </span>
                 )}
+                {/* KHÔNG hiện badge cho người may mắn - giữ ẩn */}
                 {!isAdmin && lastPick && bonusCount === 0 && <span style={{ color: "#4ade80" }}> ✓ Đã bốc</span>}
                 {bonusCount > 0 && (
                   <span style={{ color: "#ec4899", fontWeight: 600 }}> 🎰 Bonus x{bonusCount}</span>
@@ -405,6 +408,7 @@ export default function GameScreen({ userName, initialEnvelopes, onReset }) {
                 </div>
               </div>
             )}
+            {/* KHÔNG hiện hint cho người may mắn - giữ bí mật */}
             {isAdmin && (
               <div className="text-center mb-6">
                 <div className="inline-block px-6 py-3 rounded-full"
@@ -544,4 +548,4 @@ function HistoryPanel({ history, filterText, setFilterText, totalCount, userName
     </div>
   );
 }
-// Bảng lịch sử bốc thăm, có chức năng tìm kiếm theo tên người bốc hoặc giá trị phong bì. Admin sẽ thấy tất cả, người thường chỉ thấy lịch sử của mình.
+// Lịch sử bốc thăm với filter, phân biệt admin, người chơi và bonus picks
