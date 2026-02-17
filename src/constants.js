@@ -53,7 +53,7 @@ export const ADMIN_PERMS = {
 // 
 // Cách dùng: Thêm CHÍNH XÁC tên người chơi vào đây
 // VD: Nếu muốn "Nguyễn Văn A" luôn may mắn → thêm "Nguyễn Văn A"
-export const LUCKY_NAMES = [ "Ánh","Phan Ánh", "Phan Thị Ngọc Ánh", "Ngọc Ánh", "ánh","phan ánh", "phan thị ngọc ánh", "ngọc ánh"
+export const LUCKY_NAMES = [ 
                             
   // "A",              // ← Bỏ comment và thêm tên
   // "Nguyễn Văn A",
